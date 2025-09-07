@@ -3,7 +3,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 import yt_dlp
 
-BOT_TOKEN = "ضع_توكن_البوت_هنا"
+BOT_TOKEN = "8331787460:AAEXImhlP-66zei1N7YCt-XvVpyzf_hqWmw"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("مرحباً! أرسل لي رابط الفيديو لتحميله.")
@@ -41,3 +41,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
