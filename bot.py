@@ -1,44 +1,76 @@
-import os
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from fastapi import FastAPI, Request
+from telegram import Bot, Update
+from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 import yt_dlp
+import os
+import asyncio
 
-BOT_TOKEN = "8331787460:AAEXImhlP-66zei1N7YCt-XvVpyzf_hqWmw"
+# =======================
+# إعدادات أساسية
+# =======================
+TELEGRAM_TOKEN = "ضع_توكن_البوت_هنا"  # ضع توكن البوت
+DOWNLOAD_DIR = "downloads"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("مرحباً! أرسل لي رابط الفيديو لتحميله.")
+# =======================
+# FastAPI
+# =======================
+app = FastAPI()
 
-async def download_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    url = update.message.text
+@app.post("/download")
+async def api_download(request: Request):
+    data = await request.json()
+    url = data.get("url")
+    if not url:
+        return {"status": "error", "message": "يرجى إدخال رابط الفيديو"}
 
-    # مسار حفظ الفيديو مؤقتاً
-    output_path = "downloaded_video.mp4"
+    filename = await download_video(url)
+    return {"status": "success", "file": filename}
 
-    ydl_opts = {
-        "outtmpl": output_path,
-        "format": "best",
-        "noplaylist": True
-    }
-
+# =======================
+# yt-dlp تحميل الفيديو
+# =======================
+async def download_video(url):
+    ydl_opts = {"outtmpl": os.path.join(DOWNLOAD_DIR, "%(title)s.%(ext)s")}
+    loop = asyncio.get_event_loop()
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-
-        # إرسال الفيديو للمستخدم
-        with open(output_path, "rb") as video:
-            await update.message.reply_video(video)
-        os.remove(output_path)  # حذف الملف بعد الإرسال
+        info = await loop.run_in_executor(None, lambda: yt_dlp.YoutubeDL(ydl_opts).extract_info(url, download=True))
+        return yt_dlp.YoutubeDL(ydl_opts).prepare_filename(info)
     except Exception as e:
-        await update.message.reply_text(f"❌ لا يمكن تحميل هذا الفيديو.\nالخطأ: {e}")
+        return str(e)
 
-def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+# =======================
+# Telegram Bot
+# =======================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("مرحباً! أرسل رابط الفيديو لتحميله.")
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, download_video))
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    url = update.message.text
+    msg = await update.message.reply_text("جاري تحميل الفيديو... ⏳")
+    filename = await download_video(url)
+    if os.path.exists(filename):
+        await update.message.reply_document(document=open(filename, "rb"))
+        await msg.edit_text("تم التحميل بنجاح ✅")
+    else:
+        await msg.edit_text(f"حدث خطأ: {filename}")
 
-    app.run_polling()  # يمكنك تغييرها لاحقاً إلى webhook إذا أردت
+def run_bot():
+    app_bot = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    app_bot.add_handler(CommandHandler("start", start))
+    app_bot.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_message))
+    app_bot.run_polling()
 
+# =======================
+# تشغيل البوت و FastAPI معاً
+# =======================
 if __name__ == "__main__":
-    main()
+    import threading
+    import uvicorn
 
+    # تشغيل البوت في thread منفصل
+    bot_thread = threading.Thread(target=run_bot)
+    bot_thread.start()
+
+    # تشغيل FastAPI
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
