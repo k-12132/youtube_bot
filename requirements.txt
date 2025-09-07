@@ -1,3 +1,16 @@
+# مكتبة البوت مع دعم Webhooks
 python-telegram-bot[webhooks]==22.3
+
+# أداة تحميل الفيديوهات من يوتيوب ومواقع أخرى
 yt-dlp
+
+# مكتبة للتعامل مع الطلبات HTTP
 httpx
+
+# مكتبات أساسية ضرورية لبيئة Render
+certifi
+idna
+anyio
+sniffio
+h11
+httpcore
