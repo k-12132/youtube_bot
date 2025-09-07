@@ -4,7 +4,7 @@ from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 # إعداد البوت
-BOT_TOKEN = "ضع_توكن_البوت_هنا"
+BOT_TOKEN = "8331787460:AAEXImhlP-66zei1N7YCt-XvVpyzf_hqWmw"
 
 # دالة لجلب الفيديوهات من RapidAPI
 def get_playlist_videos(playlist_id):
@@ -42,3 +42,4 @@ app.add_handler(CommandHandler("playlist", playlist))
 if __name__ == "__main__":
     print("البوت يعمل...")
     app.run_polling()
+
